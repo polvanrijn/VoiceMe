@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Explore the speaker embeddings</title>
+</head>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+      integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+<style>
+    #video{
+        width: 256px;
+        position: fixed;
+        /*//height: 256px;*/
+    }
+
+    #preview {
+        display: none;
+    }
+</style>
+<body>
+
+<!DOCTYPE html>
+<meta>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-sm">
+            <form id="form">
+                <div class="form-group">
+                    <label htmlFor="server">Server url</label>
+                    <input type="url" class="form-control" id="server" aria-describedby="text"
+                           value="http://0.0.0.0:31337">
+                </div>
+                <div class="form-group">
+                    <label for="model_name">Model name</label>
+                    <select class="form-control" id="model_name">
+                        <option value="vctk-vits">Pretrained VCTK Vits model</option>
+                        <option value="speakernet-cv">Proprietary VITS speakernet model</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label htmlFor="text">Text</label>
+                    <input type="text" class="form-control" id="text" aria-describedby="text"
+                           value="The quick brown fox jumps over the lazy dog.">
+                </div>
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="normalize_embedding">
+                    <label class="form-check-label" for="normalize_embedding">Normalize speaker embedding</label>
+                </div>
+
+                <div class="mb-3">
+                    <label for="face" class="form-label">Image of face</label>
+                    <input class="form-control" type="file" id="face">
+                    <img id="preview" class="img-fluid" src="#" alt="your image" style="opacity: 0"/>
+                </div>
+
+            </form>
+
+        </div>
+        <div class="col-sm">
+            <div id="result">
+                <div class="row">
+                    <div class="col-sm-12" id="waveform">
+                        <img class="img-fluid" src="">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<script>
+    var synth_dict;
+    function stringToHTML(str) {
+        var dom = document.createElement('div');
+        dom.innerHTML = str;
+        return dom;
+    }
+
+
+    // Add sliders
+    const N_PC = 10;
+    for (var i = 0; i < N_PC; i++) {
+        var out = '<div class="form-group">';
+        out += '<label for="pc' + (i + 1) + '">PC ' + (i + 1) + '</label>';
+        out += '<input type="range" class="custom-range" id="pc' + (i + 1) + '"  min="-15" max="15" value="0" step="0.001">';
+        out += '</div>';
+        $('#form').append(stringToHTML(out));
+    }
+
+    function dictToURI(dict) {
+        var str = [];
+        for (var p in dict) {
+            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(dict[p]));
+        }
+        return str.join("&");
+    }
+
+    function readURL(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+
+            reader.onload = function (e) {
+                $('#preview').attr('src', e.target.result);
+                $('#preview').css('opacity', '1');
+            }
+
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    $('#demo, input, select').change(function () {
+        if ($('#preview').attr('src') === "#") {
+            alert('You must first upload a face')
+        } else {
+            synth_dict = {'key': 'tmp'};
+            $('input, select').each(function (i, item) {
+                synth_dict[item.id] = item.value
+            });
+            synth_dict['normalize_embedding'] = document.getElementById('normalize_embedding').checked
+
+            var pca_weights = []
+            for (var i = 0; i < N_PC; i++) {
+                pca_weights.push(parseFloat(synth_dict['pc' + (i + 1)]))
+            }
+            pca_weights = [pca_weights]
+            synth_dict['pca_weights'] = JSON.stringify(pca_weights)
+            synth_dict['reference_image'] = $('#preview').attr('src').split('base64')[1]
+
+
+            console.log(synth_dict)
+
+            var old_video = document.getElementById("video");
+            if (old_video) {
+                old_video.pause()
+                old_video.remove()
+            }
+
+
+            var url = 'http://0.0.0.0:5000/api/tts_lipsync/synthesize_batched?'+ dictToURI(synth_dict);
+            // var url = document.location.origin + '/synthesize?' + dictToURI(synth_dict);
+        document.getElementById('result').append(stringToHTML(
+            '<video id="video">' +
+            '<source src="' + url + '" type="video/mp4">' +
+            'Your browser does not support the audio element.' +
+            '</video>'
+        ))
+
+        var new_audio = document.getElementById("video");
+        new_audio.play()
+        }
+    })
+
+
+    $("#face").change(function () {
+        readURL(this);
+    });
+</script>
+
+</body>
+</html>
