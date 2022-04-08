@@ -84,9 +84,9 @@ pip install -r requirements.txt
 # Install monotonic_align
 mv monotonic_align ../monotonic_align
 
-# Download the checkpoint
+# Download the VCTK checkpoint
 pip install gdown
-gdown 'https://drive.google.com/uc?id=1q86w74Ygw2hNzYP9cWkeClGT5X25PvBT'
+gdown 'https://drive.google.com/file/d/11aHOlhnxzjpdWDpsz1vFDCzbeEfoIxru'
 
 # Install as package
 mv ../setup_vits.py setup.py
