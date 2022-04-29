@@ -86,7 +86,7 @@ mv monotonic_align ../monotonic_align
 
 # Download the VCTK checkpoint
 pip install gdown
-gdown 'https://drive.google.com/file/d/11aHOlhnxzjpdWDpsz1vFDCzbeEfoIxru'
+gdown https://drive.google.com/uc?id=11aHOlhnxzjpdWDpsz1vFDCzbeEfoIxru
 
 # Install as package
 mv ../setup_vits.py setup.py
